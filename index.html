@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NATIVUX - Netflix Style Premium</title>
+    <style>
+        :root { --main-red: #e50914; --bg-black: #141414; }
+        
+        body { 
+            margin: 0; background: var(--bg-black); color: white; 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            overflow-x: hidden;
+        }
+
+        /* REPRODUCTOR PRINCIPAL */
+        .hero-player {
+            position: relative; width: 100%; height: 75vh;
+            background: #000; display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+        
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        /* INTERFAZ SOBRE EL VIDEO (AUTO-HIDE) */
+        .ui-element {
+            transition: opacity 0.5s ease-in-out;
+            opacity: 1;
+        }
+
+        .logo {
+            position: absolute; top: 20px; left: 40px;
+            font-weight: bold; font-size: 30px; color: var(--main-red);
+            z-index: 10; letter-spacing: 1px; text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        .video-info {
+            position: absolute; bottom: 60px; left: 40px;
+            z-index: 10; max-width: 50%;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+        }
+        .video-info h1 { font-size: 36px; margin: 0; }
+        .video-info p { font-size: 16px; color: #ccc; margin-bottom: 20px; }
+
+        /* BOTONES DE CONTROL */
+        .control-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .btn-control {
+            background: white; color: black; border: none; padding: 10px 20px;
+            font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; transition: background 0.2s;
+        }
+        .btn-control:hover { background: rgba(255,255,255,0.7); }
+        .btn-secondary { background: rgba(109, 109, 110, 0.7); color: white; }
+        .btn-secondary:hover { background: rgba(109, 109, 110, 0.4); }
+
+        /* Estilo para el botón de favorito */
+        .btn-fav { color: #ccc; }
+        .btn-fav.active { color: #ffeb3b; }
+
+        /* SECCIÓN DE CATÁLOGO */
+        .content-section { padding: 40px; }
+        .section-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #e5e5e5; }
+        
+        .row {
+            display: flex; gap: 15px; overflow-x: auto; padding: 15px 0;
+            scrollbar-width: none; scroll-behavior: smooth;
+        }
+        .row::-webkit-scrollbar { display: none; }
+
+        .card {
+            min-width: 280px; height: 160px; background: #2f2f2f;
+            border-radius: 4px; cursor: pointer; transition: transform 0.3s;
+            display: flex; justify-content: center; align-items: center;
+            box-sizing: border-box; position: relative; overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .card:hover { transform: scale(1.08); z-index: 5; border: 2px solid white; }
+        
+        .card video {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; object-fit: cover;
+            z-index: 1; opacity: 0.6;
+        }
+        
+        .card-info {
+            position: relative; z-index: 2; 
+            background: rgba(0,0,0,0.7); padding: 8px; 
+            border-radius: 4px; width: 80%; text-align: center;
+        }
+
+        .fav-indicator { position: absolute; top: 10px; right: 10px; color: #ffeb3b; z-index: 3; font-size: 20px; }
+
+        /* FLECHAS DE DESPLAZAMIENTO DEL CATÁLOGO */
+        .catalog-wrapper { position: relative; }
+        .scroll-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            z-index: 20; background: rgba(0,0,0,0.75); color: white;
+            border: 2px solid rgba(255,255,255,0.3); border-radius: 50%;
+            width: 44px; height: 44px; font-size: 20px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+            user-select: none;
+        }
+        .scroll-btn:hover { background: var(--main-red); border-color: var(--main-red); }
+        .scroll-btn.left  { left: -18px; }
+        .scroll-btn.right { right: -18px; }
+        .search-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 0 40px 0 40px; margin-bottom: -10px; margin-top: 20px;
+        }
+        .search-bar input {
+            background: rgba(40,40,40,0.95); border: 1px solid #555; color: white;
+            padding: 10px 16px; font-size: 15px; border-radius: 4px; width: 320px;
+            outline: none; transition: border 0.2s;
+        }
+        .search-bar input:focus { border-color: var(--main-red); }
+        .search-bar input::placeholder { color: #888; }
+        .btn-search {
+            background: var(--main-red); color: white; border: none;
+            padding: 10px 18px; font-size: 15px; border-radius: 4px;
+            cursor: pointer; font-weight: bold; transition: background 0.2s;
+        }
+        .btn-search:hover { background: #b00710; }
+        .search-results-count { color: #aaa; font-size: 13px; }
+        .no-results { color: #888; font-size: 15px; padding: 20px 0; }
+
+        /* Tarjeta: sin video, thumbnail de color */
+        .card-thumb {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            object-fit: cover; z-index:1; opacity:0.7;
+        }
+        .card-placeholder {
+            position:absolute; top:0; left:0; width:100%; height:100%;
+            z-index:1; display:flex; align-items:center; justify-content:center;
+            font-size: 38px; opacity: 0.18;
+        }
+
+        .vignette {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60%;
+            background: linear-gradient(transparent, rgba(20,20,20,1));
+            z-index: 5; pointer-events: none;
+        }
+    </style>
+</head>
+<body onmousemove="resetUITimer()" onclick="resetUITimer()">
+
+    <div class="hero-player" id="mainContainer">
+        <div class="logo ui-element">NATIVUX</div>
+        <div class="vignette"></div>
+        
+        <div class="video-info ui-element" id="videoInfo">
+            <h1 id="heroTitle">Cargando...</h1>
+            <p id="heroDesc">Selecciona un título.</p>
+            
+            <div class="control-buttons">
+                <button class="btn-control btn-secondary" onclick="skipTime(-10)" title="Retroceder 10s">⏪ -10s</button>
+                <button class="btn-control" id="btnPlayPause" onclick="togglePlayPause()">⏸ PAUSAR</button>
+                <button class="btn-control btn-secondary" onclick="skipTime(10)" title="Adelantar 10s">+10s ⏩</button>
+                <button class="btn-control btn-secondary" id="btnMute" onclick="toggleMute()">🔊 SILENCIAR</button>
+                <button class="btn-control btn-secondary" id="btnFav" onclick="toggleFavorite()">★ FAVORITO</button>
+                <button class="btn-control btn-secondary" onclick="toggleFullScreen()">⛶ PANTALLA COMPLETA</button>
+            </div>
+        </div>
+        
+        <video id="tvPlayer" autoplay muted playsinline controls preload="none">
+            <source src="" type="video/mp4">
+        </video>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Buscar por título o categoría..." oninput="buscarVideos()" autocomplete="off">
+        <button class="btn-search" onclick="buscarVideos()">BUSCAR</button>
+        <span class="search-results-count" id="searchCount"></span>
+    </div>
+
+    <div class="content-section">
+        <div class="section-title" id="sectionTitle">Tu Programación</div>
+        <div class="catalog-wrapper">
+            <button class="scroll-btn left"  onclick="scrollCatalog(-1)">&#8249;</button>
+            <div class="row" id="catalogRow"></div>
+            <button class="scroll-btn right" onclick="scrollCatalog(1)">&#8250;</button>
+        </div>
+        <div class="no-results" id="noResults" style="display:none;">No se encontraron resultados.</div>
+    </div>
+
+    <script>
+        const player = document.getElementById('tvPlayer');
+        const heroTitle = document.getElementById('heroTitle');
+        const catalogRow = document.getElementById('catalogRow');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnMute = document.getElementById('btnMute');
+        const btnFav = document.getElementById('btnFav');
+        const uiElements = document.querySelectorAll('.ui-element');
+        const searchInput = document.getElementById('searchInput');
+        const searchCount = document.getElementById('searchCount');
+        const noResults = document.getElementById('noResults');
+        const sectionTitle = document.getElementById('sectionTitle');
+
+        let uiTimer;
+        let saveTimer;
+        let indiceActual = localStorage.getItem('nativux_index') ? parseInt(localStorage.getItem('nativux_index')) : 0;
+        let tiempoGuardado = localStorage.getItem('nativux_time') ? parseFloat(localStorage.getItem('nativux_time')) : 0;
+        let favoritos = JSON.parse(localStorage.getItem('nativux_favs')) || [];
+        let listaFiltrada = [];
+
+        const CATEGORY_COLORS = {
+            'Animados': '#1a3a5c', 'Animado': '#1a3a5c',
+            'Documental': '#1a5c3a', 'Pelicula': '#5c1a1a',
+            'Musica': '#3a1a5c'
+        };
+        const CATEGORY_ICONS = {
+            'Animados': '🎬', 'Animado': '🎬',
+            'Documental': '🎥', 'Pelicula': '🎞️',
+            'Musica': '🎵'
+        };
+
+        const listaVideos = [
+            { id: 1, nombre: "Betty Toon,Estrella Estrellada - Temporada 1", desc: "Animados", url: "https://dl.dropboxusercontent.com/scl/fi/cw3grhqcau2uu614oqqsf/y2mate.com-Betty-toon-estrella-estrellada_360p.mp4?rlkey=a5nimez2upz42bp7m871lrx2y" },
+            { id: 38, nombre: "Los Simpsons, Cap13-Temp3", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/4a1kkx6odi9t1mn32j73n/03x13-Bart-y-la-radio.mp4?rlkey=875yipktjp8d5jdcpcdp0nhh7" },
+            { id: 2, nombre: "Huella de los Dinosaurios - Cap 1", desc: "Documental", url: "https://dl.dropboxusercontent.com/scl/fi/crb2xdeb8xl2h6o4q4ea5/Huella-de-dinosaurios-Documental.mp4?rlkey=s3ak2vpqa70u9yryputyw1fg7" },
+            { id: 3, nombre: "Saint Seiya - Alma de Oro (Completa)", desc: "Animados", url: "https://dl.dropboxusercontent.com/scl/fi/ifgbbmvnpjn9k4i5btyon/Saint-Seiya-Alma-de-Oro-Serie-Completa-2018_360P.mp4?rlkey=zcy64m0ya1kj4e912al7g0fks" },
+            { id: 4, nombre: "Huella de los Dinosaurios - Cap 2", desc: "Documental", url: "https://dl.dropboxusercontent.com/scl/fi/cadj7tqhj00iqwvd30f0p/videoplayback-3.mp4?rlkey=5bon3k9e6o87a0tz59aig7je7" },
+            { id: 5, nombre: "Huella de los Dinosaurios - Cap 3", desc: "Documental", url: "https://dl.dropboxusercontent.com/scl/fi/ooampyjihd25agdt5g8ci/videoplayback-4.mp4?rlkey=jsthdqi06n5ozh6rsc6lgd935" },
+            { id: 6, nombre: "Kymatica - Geometria sagrada, Subtitulado", desc: "Documental", url: "https://dl.dropboxusercontent.com/scl/fi/gtib18ryu3ymthp2ne1iw/y2mate.com-Kymatica-Documental-en-Espa-ol-Sin-subtitulos_360p.mp4?rlkey=08j5qctnvxscvl6boy3iittew" },
+            { id: 8, nombre: "South Park, Cap1-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/2tou4p7kpbhmq9624rsjr/Temp-1-Ep-01.mp4?rlkey=dadln3wnx29ojpgye9yp3j21h" },
+            { id: 9, nombre: "South Park, Cap2-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/deshqvq136p5tio4citar/Temp-1-Ep-02.mp4?rlkey=5c4g9k27dmr5l1whvnrxuyx8r" },
+            { id: 10, nombre: "South Park, Cap3-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/clxxo7o5a467gl94rpaxg/Temp-1-Ep-03.mp4?rlkey=txzkicxf7k7ld03jzxbnp3slk" },
+            { id: 11, nombre: "South Park, Cap4-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/z00rrvf8cez0n0516go9p/Temp-1-Ep-04.mp4?rlkey=uxhimlxsl7xtu50cj761imu00" },
+            { id: 12, nombre: "South Park, Cap5-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/h18b8geqitb25zxkh5041/Temp-1-Ep-05.mp4?rlkey=hsu6abe0xxp4qh7e1vpec7814" },
+            { id: 13, nombre: "South Park, Cap6-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/dwxz5q2jwbs18ucm1tj5r/Temp-1-Ep-06.mp4?rlkey=avj1sin5slaohtzis7d9a7vh5" },
+            { id: 14, nombre: "South Park, Cap7-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/diw1j5uw1is2tefrvy06k/Temp-1-Ep-07.mp4?rlkey=6rhbgwrnufbviqummpi5znrfe" },
+            { id: 15, nombre: "South Park, Cap8-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/ty6i50xg5mat2v8644tj7/Temp-1-Ep-08.mp4?rlkey=iy898vn3b1bfvc32w79slc6jv" },
+            { id: 16, nombre: "South Park, Cap9-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/exnbb9dtsglvgjurfr113/Temp-1-Ep-09.mp4?rlkey=w63plha3cwgccfvf830ntyn1y" },
+            { id: 17, nombre: "South Park, Cap10-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/27lyjdayqcoofqawbzzgj/Temp-1-Ep-10.mp4?rlkey=2iuhpwcjgia3sdrzrkszlj0y6" },
+            { id: 18, nombre: "South Park, Cap11-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/vg1mi9bak439835htz144/Temp-1-Ep-11.mp4?rlkey=w3a2ztu5jv5fmnz1vmbqfn143" },
+            { id: 19, nombre: "South Park, Cap12-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/xvmg3e4nqccnp182wivpd/Temp-1-Ep-12.mp4?rlkey=wtmfytjaek2hx9ncotljd5kps" },
+            { id: 20, nombre: "South Park, Cap13-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/r96kokjdqtkx8rhk3k80w/Temp-1-Ep-13.mp4?rlkey=rgsrppculrgm7xaj63789per4" },
+            { id: 21, nombre: "South Park, Cap1-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/ceono0f7mb2cw3z96in1k/Temp-2-Ep-01.mp4?rlkey=pxhlwkqsszk76zgwfxwkv71s6" },
+            { id: 22, nombre: "South Park, Cap2-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/5qd21ktjuo0jyuxhnpzp4/Temp-2-Ep-02.mp4?rlkey=8uxyscxytsf3wdl9z2hotk2lw" },
+            { id: 23, nombre: "South Park, Cap3-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/9p9ffk5dj7ki6dq9twzgj/Temp-2-Ep-03.mp4?rlkey=6w4cgh6y70cvof41dr6s2msup" },
+            { id: 24, nombre: "South Park, Cap4-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/i3bask3la6rxuuh2054qm/Temp-2-Ep-04.mp4?rlkey=kjcuhqx8gxbo2lpmybwe3zcq0" },
+            { id: 25, nombre: "South Park, Cap5-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/u8fablnvzv9m42xatz7z4/Temp-2-Ep-05.mp4?rlkey=j1o3ihzq4fdkzb2f55tpwwe7n" },
+            { id: 26, nombre: "South Park, Cap6-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/xso2ari8y1zpx29cl8wp8/Temp-2-Ep-06.mp4?rlkey=ko9ioaqbcsndyqg9spgef0ely" },
+            { id: 27, nombre: "South Park, Cap7-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/0ey4decz2496z6rmx6kx2/Temp-2-Ep-07.mp4?rlkey=z2msn974woagztdqofmfz1pu4" },
+            { id: 28, nombre: "South Park, Cap8-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/6zjv8t0gjey6c0jmeh4s6/Temp-2-Ep-08.mp4?rlkey=zxargj6t5sl2aclmaydmtmoar" },
+            { id: 29, nombre: "South Park, Cap9-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/a15tndxdrc5n4ngd4dtle/Temp-2-Ep-09.mp4?rlkey=aksagckuja2m8rc8buz4696fg" },
+            { id: 30, nombre: "South Park, Cap10-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/1hnb0di6595dmxojklwwl/Temp-2-Ep-10.mp4?rlkey=hm3ex7vyuwcupfy6c89xe7f4e" },
+            { id: 31, nombre: "South Park, Cap11-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/2j3cpa8bk6tciyuxida6v/Temp-2-Ep-11.mp4?rlkey=j8msdgtex6fu6ehrox61pyh9i" },
+            { id: 32, nombre: "South Park, Cap12-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/fbts9s7jmnzbj1ou1n46m/Temp-2-Ep-12.mp4?rlkey=n9it71jx7e2y4v88o6e9s3dzm" },
+            { id: 33, nombre: "South Park, Cap13-Temp2", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/fjf4dk621ur496iwaknjf/Temp-2-Ep-13.mp4?rlkey=eywvb41277k97toyhre0ft8is" },
+            { id: 34, nombre: "Los Simpsons, Cap4-Temp1", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/105xjhkgswyy2ehj0lyqt/04x01-Kampo-Krusty.mp4?rlkey=4zuzsy0verumyl27qrieah2q5" },
+            { id: 35, nombre: "Los Simpsons, Cap4-Temp3", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/q3zcbkphdsxu4nvkoebwn/04x03-Homero-hereje.mp4?rlkey=na6bi3kzwql8iinyumiautzzu" },
+            { id: 36, nombre: "Los Simpsons, Cap3-Temp5", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/oq9z8cnt2cya0j3vy6x42/05x03-Homero-va-a-la-universidad.mp4?rlkey=cu5fdlkg3tvaigyzp2xl675v4" },
+            { id: 37, nombre: "Los Simpsons, Cap8-Temp6", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/rjfsnzhibivt1ekt3l8o2/06x08-Lisa-y-los-deportes.mp4?rlkey=1wshdcf5klfcv7mrw04q77tib" },
+            { id: 40, nombre: "Los Simpsons, Cap14-Temp6", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/8f22zydnr2srey2bsx0ku/06x14-El-cometa-de-Bart.mp4?rlkey=so3uzipx4fdavf4hmd3fgp3fb" },
+            { id: 39, nombre: "Gandahar, Los años luz (Subtitulado)", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/6zj62w2h7am51j78j3685/y2mate.com-Gandahar-Los-A-os-Luz-Ciencia-Ficci-n-Sub-Espa-ol_480p.mp4?rlkey=79gphed41qdd5z7w84sxgksvj" },
+            { id: 60, nombre: "Los Simpsons, Cap8-Temp6", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/rjfsnzhibivt1ekt3l8o2/06x08-Lisa-y-los-deportes.mp4?rlkey=1wshdcf5klfcv7mrw04q77tib" },
+            { id: 41, nombre: "Saint Seiya, Torneo Galáctico", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/dkaps4xshtw6i0muyeupz/Caballeros-del-Zod-aco-1986_480p.mp4?rlkey=uoxvg0ubx3ceza7xroh8ypgmg" },
+            { id: 42, nombre: "Hellraiser 1, Puerta al infierno", desc: "Pelicula", url: "https://dl.dropboxusercontent.com/scl/fi/3v5e9qo0qg5fj0t9nbewa/Hellraiser_-Puerta-del-Infierno-_-PEL-CULA-COMPLETA-DE-TERROR-_-NetMovies-en-Espa-ol.mp4?rlkey=s357dbim6u91vcmqhqcxjgsoh" },
+            { id: 43, nombre: "Kung pow, Enter the fist (Español)", desc: "Pelicula", url: "https://dl.dropboxusercontent.com/scl/fi/5pr2l6hzo2z23w3isemyn/KUNG-POW-ENTER-THE-FIST-LATINO.mp4?rlkey=y758dhmxvoovqy5kodc4f5b47" },
+            { id: 44, nombre: "The comic, Sobre Moebius (Español)", desc: "Documental", url: "https://dl.dropboxusercontent.com/scl/fi/0x67yd4wbza13yxqtltdh/y2mate.com-COMIC-DOCUMENTAL-SOBRE-MOEBIUS_480p.mp4?rlkey=yu12u8ksbew67wtadnmysttxn" },
+            { id: 45, nombre: "Regreso al Planeta de los Simios (Serie completa, Español)", desc: "Animado", url: "https://dl.dropboxusercontent.com/scl/fi/m4qb2k93go6cegp8vxw8l/Y2meta.app-Regreso-al-planeta-de-los-simios-La-SERIE-COMPLETA-en-Castellano-1975-480p.mp4?rlkey=fzgasq7y7voiax05283d74y55" },
+            { id: 47, nombre: "Max Romeo - Chase the devil", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/sjxmxl2hw9xaafi09t5b9/y2mate.com-Max-Romeo-Chase-The-Devil-HD_480p.mp4?rlkey=z214emv55g0qg2m0nzmuc4vo7" },
+            { id: 48, nombre: "Michael Jackson - Billy Jean", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/vn3jloyixdie3hkuuwmif/y2mate.com-Michael-Jackson-Billie-Jean-Official-Video_480p.mp4?rlkey=0nx4pr58ke8u12u1eb0yf7k3q" },
+            { id: 49, nombre: "Chaka demus - Murder she wrote", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/wnw1a08krq0dr7uo72hmh/y2mate.com-Murder-She-Wrote-Chaka-Demus-and-Pliers_360p.mp4?rlkey=3x7wwcjoq7an8wpib6un0htxw" },
+            { id: 50, nombre: "Mr. Easy - Nuttin nuh go so", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/bo0y3bxua4n991xqdn7by/y2mate.com-Nuttin-Nuh-Go-So_480p.mp4?rlkey=mpbnbbji91vvet3xi1srojkxf" },
+            { id: 51, nombre: "Out kast - Hey Ya", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/2748q4bv3pyeorzj2ztqe/y2mate.com-Outkast-Hey-Ya-Official-HD-Video_480p.mp4?rlkey=wgze0q369gt8sk6zbx2ueaweu" },
+            { id: 52, nombre: "Protoje - Who knows", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/u38j74onm6dq5g0328jp7/y2mate.com-Protoje-Who-Knows-ft-Chronixx-Official-Music-Video_480p.mp4?rlkey=nyymetwsi4t6xsi7ssq346750" },
+            { id: 53, nombre: "Ras Muhammad - Salam", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/wisplvfb9k0b5dvox4891/y2mate.com-Ras-Muhamad-Salam-Official-Video-2015_480p.mp4?rlkey=tj8og0a2kqako06gd9islud1x" },
+            { id: 54, nombre: "Rockwell - Somebody is watching me", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/kl3julfqkf866o5mez7uh/y2mate.com-Rockwell-Somebodys-Watching-Me-Official-Music-Video_480p.mp4?rlkey=itg7h6ieus6e1xc5gpp5oi3v6" },
+            { id: 55, nombre: "Run DMC ft. Aerosmith - Walk this way", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/9gmxv7kt28i8scjj4c20u/y2mate.com-RUN-DMC-Walk-This-Way-Official-HD-Video-ft-Aerosmith_480p.mp4?rlkey=a4mxul9qp4s08n8c8k9r6y89t" },
+            { id: 57, nombre: "Sean paul - like glue", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/vnax8kxexgtcms13fxikb/y2mate.com-Sean-Paul-Like-Glue-Lyrics-HD_480p.mp4?rlkey=vyyt1q0pd33qky8cq1fjsynin" },
+            { id: 58, nombre: "Shaggy ft. Chronnix - Bridges", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/7xp5tcgu1dtd77uu8w7vs/y2mate.com-Shaggy-Bridges-ft-Chronixx-Official-Video_480p.mp4?rlkey=cuut9l3haxupdfqsyyepmqbu7" },
+            { id: 59, nombre: "Snow - Informer", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/gg3l545my91ivfzs81jnx/y2mate.com-Snow-Informer-Official-Music-Video_480p.mp4?rlkey=a1uws4srptdsauja6ycoygpei" },
+            { id: 61, nombre: "Jacksons five - Blame it to the boogie", desc: "Musica", url: "https://dl.dropboxusercontent.com/scl/fi/0vzcl3p8jrc8hiwfq040k/y2mate.com-The-Jacksons-Blame-It-On-the-Boogie-Official-Video_360p.mp4?rlkey=i0juxdwr4fd3uivqolbzhk82y" },
+            { id: 7, nombre: "Betty Toon,SuperBici - Temporada 1", desc: "Animados", url: "https://dl.dropboxusercontent.com/scl/fi/atyiu9nj44zkduseem692/y2mate.com-Betty-Toons-La-super-bici_360p.mp4?rlkey=xo4y6n2yrvisb0qv2ed1zq81v" }
+        ];
+
+        // ── SCROLL MANUAL DEL CATÁLOGO ────────────────────────────────────────
+        function scrollCatalog(dir) {
+            catalogRow.scrollBy({ left: dir * 600, behavior: 'smooth' });
+        }
+
+        // ── 1. CATÁLOGO (sin videos en tarjetas = carga ultrarrápida) ──────────
+        function renderCatalog(lista) {
+            catalogRow.innerHTML = "";
+            const listaOrdenada = [...lista].sort((a, b) => {
+                const aFav = favoritos.includes(a.id);
+                const bFav = favoritos.includes(b.id);
+                return (aFav === bFav) ? 0 : aFav ? -1 : 1;
+            });
+
+            if (listaOrdenada.length === 0) {
+                noResults.style.display = "block";
+                searchCount.textContent = "0 resultados";
+                return;
+            }
+            noResults.style.display = "none";
+
+            const fragment = document.createDocumentFragment();
+            listaOrdenada.forEach((video) => {
+                const card = document.createElement('div');
+                card.className = "card";
+                const isFav = favoritos.includes(video.id);
+                const bgColor = CATEGORY_COLORS[video.desc] || '#2f2f2f';
+                const icon = CATEGORY_ICONS[video.desc] || '▶';
+
+                card.style.background = bgColor;
+                card.onclick = () => {
+                    const realIndex = listaVideos.findIndex(v => v.id === video.id);
+                    seleccionarVideo(realIndex, 0);
+                };
+                card.innerHTML = `
+                    <div class="card-placeholder">${icon}</div>
+                    ${isFav ? '<div class="fav-indicator">★</div>' : ''}
+                    <div class="card-info">
+                        <div style="font-size:11px;color:#aaa;margin-bottom:3px;">${video.desc}</div>
+                        ${video.nombre}
+                    </div>
+                `;
+                fragment.appendChild(card);
+            });
+            catalogRow.appendChild(fragment);
+        }
+
+        // ── 2. BUSCADOR ───────────────────────────────────────────────────────
+        function buscarVideos() {
+            const q = searchInput.value.trim().toLowerCase();
+            if (!q) {
+                listaFiltrada = listaVideos;
+                sectionTitle.textContent = "Tu Programación";
+                searchCount.textContent = "";
+            } else {
+                listaFiltrada = listaVideos.filter(v =>
+                    v.nombre.toLowerCase().includes(q) || v.desc.toLowerCase().includes(q)
+                );
+                sectionTitle.textContent = `Resultados para: "${searchInput.value.trim()}"`;
+                searchCount.textContent = `${listaFiltrada.length} resultado${listaFiltrada.length !== 1 ? 's' : ''}`;
+            }
+            renderCatalog(listaFiltrada);
+        }
+
+        // ── 3. REPRODUCCIÓN ───────────────────────────────────────────────────
+        function seleccionarVideo(index, resumeTime = 0) {
+            indiceActual = index;
+            const video = listaVideos[index];
+            player.src = video.url;
+            heroTitle.textContent = video.nombre;
+            document.getElementById('heroDesc').textContent = video.desc;
+            player.load();
+            player.onloadedmetadata = () => {
+                if (resumeTime > 0) player.currentTime = resumeTime;
+                player.play().catch(() => {});
+                actualizarInterfaz();
+            };
+            localStorage.setItem('nativux_index', index);
+        }
+
+        // ── 4. SKIP ±10s ──────────────────────────────────────────────────────
+        function skipTime(seconds) {
+            player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + seconds));
+        }
+
+        // ── 5. FAVORITOS ──────────────────────────────────────────────────────
+        function toggleFavorite() {
+            const videoId = listaVideos[indiceActual].id;
+            if (favoritos.includes(videoId)) {
+                favoritos = favoritos.filter(id => id !== videoId);
+            } else {
+                favoritos.push(videoId);
+            }
+            localStorage.setItem('nativux_favs', JSON.stringify(favoritos));
+            actualizarInterfaz();
+            renderCatalog(listaFiltrada);
+        }
+
+        function actualizarInterfaz() {
+            const isFav = favoritos.includes(listaVideos[indiceActual].id);
+            btnFav.innerHTML = isFav ? "★ EN FAVORITOS" : "☆ FAVORITO";
+            btnFav.classList.toggle('active', isFav);
+            btnPlayPause.innerHTML = player.paused ? "▶ REPRODUCIR" : "⏸ PAUSAR";
+            btnMute.innerHTML = player.muted ? "🔇 ACTIVAR" : "🔊 SILENCIAR";
+        }
+
+        // ── 6. AUTO-HIDE CONTROLES ────────────────────────────────────────────
+        function resetUITimer() {
+            uiElements.forEach(el => el.style.opacity = "1");
+            clearTimeout(uiTimer);
+            if (!player.paused) {
+                uiTimer = setTimeout(() => {
+                    uiElements.forEach(el => el.style.opacity = "0");
+                }, 3000);
+            }
+        }
+
+        // ── 7. CONTROLES BÁSICOS ──────────────────────────────────────────────
+        function togglePlayPause() { player.paused ? player.play() : player.pause(); actualizarInterfaz(); }
+        function toggleMute() { player.muted = !player.muted; actualizarInterfaz(); }
+        function toggleFullScreen() {
+            const c = document.getElementById('mainContainer');
+            if (!document.fullscreenElement) c.requestFullscreen();
+            else document.exitFullscreen();
+        }
+
+        player.onpause = actualizarInterfaz;
+        player.onplay = actualizarInterfaz;
+
+        // Guardar posición con debounce (cada 3s) para no saturar localStorage
+        player.ontimeupdate = () => {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                localStorage.setItem('nativux_time', player.currentTime);
+            }, 3000);
+        };
+
+        // ── 8. AUTO-SCROLL (requestAnimationFrame, más eficiente) ─────────────
+        let scrollDir = 1;
+        let lastScroll = 0;
+        function autoScroll(ts) {
+            if (ts - lastScroll > 30) {
+                if (!catalogRow.matches(':hover')) {
+                    catalogRow.scrollLeft += scrollDir;
+                    if (catalogRow.scrollLeft + catalogRow.clientWidth >= catalogRow.scrollWidth || catalogRow.scrollLeft <= 0)
+                        scrollDir *= -1;
+                }
+                lastScroll = ts;
+            }
+            requestAnimationFrame(autoScroll);
+        }
+
+        // ── INICIO ────────────────────────────────────────────────────────────
+        listaFiltrada = listaVideos;
+        renderCatalog(listaFiltrada);
+        seleccionarVideo(indiceActual, tiempoGuardado);
+        requestAnimationFrame(autoScroll);
+    </script>
+
+</body>
+</html>
